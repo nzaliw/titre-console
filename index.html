@@ -83,8 +83,11 @@ const CLE_API  = "sb_publishable_JQCh1villLWmB-uR1u2W5A_tAYLnjC_";
 const entetes  = { apikey: CLE_API, Authorization: "Bearer " + CLE_API };
 
 let carte = L.map("map").setView([4.95, 9.93], 12);
-L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
-  { maxZoom: 19, attribution: "© OpenStreetMap" }).addTo(carte);
+// Tuiles CARTO : utilisables par une application, contrairement aux serveurs
+// benevoles d'OpenStreetMap qui refusent ce type d'usage.
+L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",
+  { maxZoom: 20, subdomains: "abcd",
+    attribution: "© OpenStreetMap, © CARTO" }).addTo(carte);
 let couche = L.layerGroup().addTo(carte);
 
 try { const c = localStorage.getItem("titre_cle"); if (c) document.getElementById("cle").value = c; } catch(e) {}
