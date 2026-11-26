@@ -90,7 +90,13 @@ L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r
     attribution: "© OpenStreetMap, © CARTO" }).addTo(carte);
 let couche = L.layerGroup().addTo(carte);
 
-try { const c = localStorage.getItem("titre_cle"); if (c) document.getElementById("cle").value = c; } catch(e) {}
+// Cle passee dans l'adresse : l'application ouvre la console sans rien a recopier.
+const cleUrl = new URLSearchParams(location.search).get("cle");
+if (cleUrl) {
+  document.getElementById("cle").value = cleUrl.toUpperCase().replace(/[\s-]+/g, "");
+} else {
+  try { const c = localStorage.getItem("titre_cle"); if (c) document.getElementById("cle").value = c; } catch(e) {}
+}
 
 function fmt(d){ return new Date(d).toLocaleString("fr-FR"); }
 
@@ -98,7 +104,7 @@ document.getElementById("charger").onclick = async () => {
   // Tolerant : on accepte "TITRE XXXX", "titre xxxx OU", ou la cle seule.
   let cle = document.getElementById("cle").value.trim().toUpperCase()
               .replace(/^TITRE\s+/, "").replace(/\s+(OU|INFO|VERROU|ALARME|VOLE)$/, "")
-              .replace(/\s+/g, "");
+              .replace(/[\s-]+/g, "");
   document.getElementById("cle").value = cle;
   if (!cle) return;
   try { localStorage.setItem("titre_cle", cle); } catch(e) {}
@@ -159,6 +165,8 @@ document.getElementById("declarer").onclick = async () => {
   } catch (e) { zone.innerHTML = "<p class='note'>Impossible de joindre le registre.</p>"; }
   finally { b.disabled = false; b.textContent = "Déclarer ce téléphone volé"; }
 };
+
+if (cleUrl) window.addEventListener("load", () => document.getElementById("charger").click());
 
 document.getElementById("verifier").onclick = async () => {
   const imei = document.getElementById("imei").value.replace(/\D/g, "");
