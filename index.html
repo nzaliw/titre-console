@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Console Titré</title>
+<link rel="stylesheet" href="leaflet.css">
+<style>
+  :root{--vert:#0E4F45;--vert2:#2E7D6E;--ocre:#C8761A;--fond:#FAF7F2;--encre:#1A1C1A;--bord:#E2DDD3}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;background:var(--fond);color:var(--encre)}
+  header{background:var(--vert);color:#fff;padding:18px 20px}
+  header h1{margin:0;font-size:22px;font-weight:600;letter-spacing:.3px}
+  header p{margin:4px 0 0;font-size:14px;opacity:.85}
+  main{max-width:1000px;margin:0 auto;padding:20px}
+  .carte{background:#fff;border:1px solid var(--bord);border-radius:12px;padding:20px;margin-bottom:18px}
+  h2{margin:0 0 12px;font-size:17px;font-weight:600}
+  label{display:block;font-size:13px;color:#5b5f5b;margin-bottom:6px}
+  input{width:100%;padding:13px;font-size:16px;border:1px solid var(--bord);border-radius:8px;background:#fff}
+  button{margin-top:12px;padding:13px 20px;font-size:16px;border:0;border-radius:8px;background:var(--vert);color:#fff;cursor:pointer}
+  button.sec{background:var(--ocre)}
+  button:disabled{opacity:.5;cursor:default}
+  #map{height:420px;border-radius:10px;margin-top:14px;border:1px solid var(--bord)}
+  table{width:100%;border-collapse:collapse;margin-top:14px;font-size:14px}
+  th,td{text-align:left;padding:8px 6px;border-bottom:1px solid var(--bord)}
+  th{font-weight:600;color:#5b5f5b;font-size:12px;text-transform:uppercase;letter-spacing:.4px}
+  .verdict{margin-top:14px;padding:18px;border-radius:10px;text-align:center;color:#fff}
+  .verdict b{display:block;font-size:22px;margin-bottom:6px}
+  .vole{background:#B3261E}.propre{background:var(--vert)}.inconnu{background:var(--ocre)}
+  .note{font-size:13px;color:#5b5f5b;margin-top:10px;line-height:1.5}
+</style>
+</head>
+<body>
+<header>
+  <h1>Console Titré</h1>
+  <p>Suivi d'un téléphone et vérification du registre</p>
+</header>
+<main>
+
+  <div class="carte">
+    <h2>Suivre un téléphone</h2>
+    <label for="cle">Clé de l'appareil — elle s'affiche dans les réglages de l'application</label>
+    <input id="cle" placeholder="Ex : K7M2PQR4TXYZ" autocomplete="off">
+    <button id="charger">Afficher la trace</button>
+    <div id="map"></div>
+    <div id="tableau"></div>
+    <p class="note">Les points sont espacés : le téléphone n'envoie pas sa position en continu,
+    pour économiser la batterie et le forfait. Les segments droits relient les relevés, ils ne
+    représentent pas un trajet réel. Le cercle autour de chaque point est le rayon d'incertitude.</p>
+  </div>
+
+
+  <div class="carte" id="bloc-decl">
+    <h2>Déclarer un vol</h2>
+    <p class="note" style="margin-top:0">À faire depuis n'importe quel appareil, sans accès au
+    téléphone volé. L'IMEI est inscrit au registre : plus personne ne pourra l'acheter en confiance.
+    Ne déclarez que si le vol est réel — une fausse déclaration est contestable et traçable.</p>
+    <label for="dimei">IMEI du téléphone volé</label>
+    <input id="dimei" placeholder="15 chiffres" inputmode="numeric" autocomplete="off">
+    <label for="dtel" style="margin-top:12px">Votre numéro de téléphone</label>
+    <input id="dtel" placeholder="+237..." autocomplete="off">
+    <label for="dlieu" style="margin-top:12px">Lieu du vol</label>
+    <input id="dlieu" placeholder="Quartier, ville" autocomplete="off">
+    <label for="dplainte" style="margin-top:12px">Numéro de plainte (si déjà déposée)</label>
+    <input id="dplainte" placeholder="Facultatif" autocomplete="off">
+    <button id="declarer" style="background:#B3261E">Déclarer ce téléphone volé</button>
+    <div id="retourdecl"></div>
+  </div>
+
+  <div class="carte">
+    <h2>Vérifier un IMEI avant d'acheter</h2>
+    <label for="imei">Composez *#06# sur le téléphone à vérifier</label>
+    <input id="imei" placeholder="15 chiffres" inputmode="numeric" autocomplete="off">
+    <button class="sec" id="verifier">Vérifier</button>
+    <div id="resultat"></div>
+  </div>
+
+</main>
+<script src="leaflet.js"></script>
+<script>
+const URL_BASE = "https://uffpjvkjknemuwdiybhp.supabase.co";
+const CLE_API  = "sb_publishable_JQCh1villLWmB-uR1u2W5A_tAYLnjC_";
+const entetes  = { apikey: CLE_API, Authorization: "Bearer " + CLE_API };
+
+let carte = L.map("map").setView([4.95, 9.93], 12);
+L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+  { maxZoom: 19, attribution: "© OpenStreetMap" }).addTo(carte);
+let couche = L.layerGroup().addTo(carte);
+
+try { const c = localStorage.getItem("titre_cle"); if (c) document.getElementById("cle").value = c; } catch(e) {}
+
+function fmt(d){ return new Date(d).toLocaleString("fr-FR"); }
+
+document.getElementById("charger").onclick = async () => {
+  const cle = document.getElementById("cle").value.trim().toUpperCase();
+  if (!cle) return;
+  try { localStorage.setItem("titre_cle", cle); } catch(e) {}
+  const b = document.getElementById("charger");
+  b.disabled = true; b.textContent = "Chargement…";
+  try {
+    const r = await fetch(`${URL_BASE}/rest/v1/rpc/titre_lire_positions`, {
+      method: "POST", headers: { ...entetes, "Content-Type": "application/json" },
+      body: JSON.stringify({ p_cle: cle }) });
+    const pts = await r.json();
+    couche.clearLayers();
+    if (!Array.isArray(pts) || pts.length === 0) {
+      document.getElementById("tableau").innerHTML =
+        "<p class='note'>Aucune position pour cette clé. Soit le téléphone n'a jamais eu de connexion, soit la clé est inexacte. Les positions envoyées par SMS n'apparaissent pas ici.</p>";
+      return;
+    }
+    const coords = pts.map(p => [p.lat, p.lon]);
+    L.polyline(coords, { color: "#0E4F45", weight: 2, dashArray: "6 6" }).addTo(couche);
+    pts.forEach((p, i) => {
+      L.circle([p.lat, p.lon], { radius: p.precision_m || 50, color: "#C8761A", weight: 1, fillOpacity: .08 }).addTo(couche);
+      L.circleMarker([p.lat, p.lon], { radius: 7, color: '#0E4F45', fillColor: '#0E4F45', fillOpacity: .9, weight: 2 }).addTo(couche)
+        .bindPopup(`<b>Point ${i + 1}</b><br>${fmt(p.releve_le)}<br>Précision ${Math.round(p.precision_m || 0)} m<br>${p.motif || ""}`);
+    });
+    carte.fitBounds(L.latLngBounds(coords).pad(0.2));
+    let t = "<table><tr><th>#</th><th>Date</th><th>Latitude</th><th>Longitude</th><th>Précision</th><th>Motif</th></tr>";
+    pts.slice().reverse().forEach((p, i) => {
+      t += `<tr><td>${pts.length - i}</td><td>${fmt(p.releve_le)}</td><td>${p.lat.toFixed(5)}</td><td>${p.lon.toFixed(5)}</td><td>${Math.round(p.precision_m || 0)} m</td><td>${p.motif || ""}</td></tr>`;
+    });
+    document.getElementById("tableau").innerHTML = t + "</table>";
+  } catch (e) {
+    document.getElementById("tableau").innerHTML = "<p class='note'>Impossible de joindre le registre.</p>";
+  } finally { b.disabled = false; b.textContent = "Afficher la trace"; }
+};
+
+
+document.getElementById("declarer").onclick = async () => {
+  const imei = document.getElementById("dimei").value.replace(/\D/g, "");
+  const tel  = document.getElementById("dtel").value.trim();
+  const zone = document.getElementById("retourdecl");
+  if (imei.length < 14 || !tel) { zone.innerHTML = "<p class='note'>IMEI et numéro sont obligatoires.</p>"; return; }
+  if (!confirm("Confirmer la déclaration de vol de l'IMEI " + imei + " ?")) return;
+  const b = document.getElementById("declarer");
+  b.disabled = true; b.textContent = "Envoi…";
+  try {
+    await fetch(`${URL_BASE}/rest/v1/rpc/titre_enregistrer_appareil`, {
+      method: "POST", headers: { ...entetes, "Content-Type": "application/json" },
+      body: JSON.stringify({ p_imei: imei, p_proprietaire: "Declarant " + tel, p_telephone: tel })
+    });
+    const r = await fetch(`${URL_BASE}/rest/v1/rpc/titre_declarer_vol`, {
+      method: "POST", headers: { ...entetes, "Content-Type": "application/json" },
+      body: JSON.stringify({ p_imei: imei, p_declare_par: tel,
+        p_lieu: document.getElementById("dlieu").value.trim(),
+        p_plainte: document.getElementById("dplainte").value.trim() })
+    });
+    zone.innerHTML = r.ok
+      ? "<div class='verdict propre'><b>DÉCLARÉ</b>L'IMEI est inscrit au registre. Déposez plainte et présentez le numéro de plainte à votre opérateur.</div>"
+      : "<p class='note'>Le registre a refusé la déclaration. Réessayez.</p>";
+  } catch (e) { zone.innerHTML = "<p class='note'>Impossible de joindre le registre.</p>"; }
+  finally { b.disabled = false; b.textContent = "Déclarer ce téléphone volé"; }
+};
+
+document.getElementById("verifier").onclick = async () => {
+  const imei = document.getElementById("imei").value.replace(/\D/g, "");
+  const zone = document.getElementById("resultat");
+  if (imei.length < 14) { zone.innerHTML = "<p class='note'>Un IMEI compte 15 chiffres.</p>"; return; }
+  zone.innerHTML = "<p class='note'>Vérification…</p>";
+  try {
+    const r = await fetch(`${URL_BASE}/rest/v1/rpc/titre_verifier_imei`, {
+      method: "POST", headers: { ...entetes, "Content-Type": "application/json" },
+      body: JSON.stringify({ p_imei: imei }) });
+    const d = await r.json();
+    if (!Array.isArray(d) || d.length === 0) {
+      zone.innerHTML = "<div class='verdict inconnu'><b>INCONNU DU REGISTRE</b>Ce téléphone n'est pas enregistré. Cela ne prouve rien, ni dans un sens ni dans l'autre.</div>";
+    } else if (d[0].statut === "vole") {
+      zone.innerHTML = `<div class='verdict vole'><b>DÉCLARÉ VOLÉ</b>N'achetez pas ce téléphone. Déclaré le ${fmt(d[0].declare_le)}.</div>`;
+    } else {
+      zone.innerHTML = "<div class='verdict propre'><b>AUCUN VOL DÉCLARÉ</b>" +
+        (d[0].certifie ? "Ce téléphone a un certificat de propriété actif. Demandez au vendeur de vous le transférer." : "Enregistré, et non déclaré volé.") + "</div>";
+    }
+  } catch (e) { zone.innerHTML = "<p class='note'>Impossible de joindre le registre.</p>"; }
+};
+</script>
+</body>
+</html>
