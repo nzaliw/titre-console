@@ -39,7 +39,7 @@
 
   <div class="carte">
     <h2>Suivre un téléphone</h2>
-    <label for="cle">Clé de l'appareil — elle s'affiche dans les réglages de l'application</label>
+    <label for="cle">Clé de l'appareil — 12 caractères, affichés dans les réglages de l'application. Ce n'est pas une commande SMS.</label>
     <input id="cle" placeholder="Ex : K7M2PQR4TXYZ" autocomplete="off">
     <button id="charger">Afficher la trace</button>
     <div id="map"></div>
@@ -95,7 +95,11 @@ try { const c = localStorage.getItem("titre_cle"); if (c) document.getElementByI
 function fmt(d){ return new Date(d).toLocaleString("fr-FR"); }
 
 document.getElementById("charger").onclick = async () => {
-  const cle = document.getElementById("cle").value.trim().toUpperCase();
+  // Tolerant : on accepte "TITRE XXXX", "titre xxxx OU", ou la cle seule.
+  let cle = document.getElementById("cle").value.trim().toUpperCase()
+              .replace(/^TITRE\s+/, "").replace(/\s+(OU|INFO|VERROU|ALARME|VOLE)$/, "")
+              .replace(/\s+/g, "");
+  document.getElementById("cle").value = cle;
   if (!cle) return;
   try { localStorage.setItem("titre_cle", cle); } catch(e) {}
   const b = document.getElementById("charger");
