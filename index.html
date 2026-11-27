@@ -135,7 +135,7 @@ document.getElementById("charger").onclick = async () => {
       L.circleMarker([p.lat, p.lon], { radius: 7, color: '#0E4F45', fillColor: '#0E4F45', fillOpacity: .9, weight: 2 }).addTo(couche)
         .bindPopup(`<b>Point ${i + 1}</b><br>${fmt(p.releve_le)}<br>Précision ${Math.round(p.precision_m || 0)} m<br>${p.motif || ""}`);
     });
-    carte.fitBounds(L.latLngBounds(coords).pad(0.2));
+    carte.fitBounds(L.latLngBounds(coords).pad(0.2), { maxZoom: 17 });
     let t = "<table><tr><th>#</th><th>Date</th><th>Latitude</th><th>Longitude</th><th>Précision</th><th>Motif</th></tr>";
     pts.slice().reverse().forEach((p, i) => {
       t += `<tr><td>${pts.length - i}</td><td>${fmt(p.releve_le)}</td><td>${p.lat.toFixed(5)}</td><td>${p.lon.toFixed(5)}</td><td>${Math.round(p.precision_m || 0)} m</td><td>${p.motif || ""}</td></tr>`;
