@@ -4,118 +4,317 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Console Titré</title>
+<link rel="icon" type="image/png" href="favicon.png">
 <link rel="stylesheet" href="leaflet.css">
 <style>
-  :root{--vert:#0E4F45;--vert2:#2E7D6E;--ocre:#C8761A;--fond:#FAF7F2;--encre:#1A1C1A;--bord:#E2DDD3}
+  :root{
+    /* Couleurs relevees sur le logo Titre */
+    --nuit:#01392B; --vert:#024D36; --vert-mi:#076E46; --vert-vif:#0E9951;
+    --or:#FBB003;   --or-clair:#FDC608; --rouge:#D81C1D; --rouge-clair:#E55E60;
+    --fond:#F6F5F7; --encre:#1E201D;   --gris:#6B7280;   --bord:#E6E4E1;
+    --ombre:0 1px 2px rgba(1,57,43,.04), 0 8px 24px rgba(1,57,43,.06);
+  }
   *{box-sizing:border-box}
-  body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;background:var(--fond);color:var(--encre)}
-  header{background:var(--vert);color:#fff;padding:18px 20px}
-  header h1{margin:0;font-size:22px;font-weight:600;letter-spacing:.3px}
-  header p{margin:4px 0 0;font-size:14px;opacity:.85}
-  main{max-width:1000px;margin:0 auto;padding:20px}
-  .carte{background:#fff;border:1px solid var(--bord);border-radius:12px;padding:20px;margin-bottom:18px}
-  h2{margin:0 0 12px;font-size:17px;font-weight:600}
-  label{display:block;font-size:13px;color:#5b5f5b;margin-bottom:6px}
-  input{width:100%;padding:13px;font-size:16px;border:1px solid var(--bord);border-radius:8px;background:#fff}
-  button{margin-top:12px;padding:13px 20px;font-size:16px;border:0;border-radius:8px;background:var(--vert);color:#fff;cursor:pointer}
-  button.sec{background:var(--ocre)}
-  button:disabled{opacity:.5;cursor:default}
-  #map{height:420px;border-radius:10px;margin-top:14px;border:1px solid var(--bord)}
-  table{width:100%;border-collapse:collapse;margin-top:14px;font-size:14px}
-  th,td{text-align:left;padding:8px 6px;border-bottom:1px solid var(--bord)}
-  th{font-weight:600;color:#5b5f5b;font-size:12px;text-transform:uppercase;letter-spacing:.4px}
-  .verdict{margin-top:14px;padding:18px;border-radius:10px;text-align:center;color:#fff}
-  .verdict b{display:block;font-size:22px;margin-bottom:6px}
-  .vole{background:#B3261E}.propre{background:var(--vert)}.inconnu{background:var(--ocre)}
-  .note{font-size:13px;color:#5b5f5b;margin-top:10px;line-height:1.5}
-  /* --- Etat du telephone --- */
-  .tuiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-top:14px}
-  .tuile{border:1px solid var(--bord);border-radius:10px;padding:12px 14px;background:#fff}
-  .tuile .t{font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:#5b5f5b}
-  .tuile .v{font-size:19px;font-weight:600;margin-top:4px;line-height:1.25}
-  .tuile .s{font-size:12px;color:#5b5f5b;margin-top:3px}
-  .tuile.alerte{border-color:#B3261E;background:#FDF4F3}
-  .tuile.alerte .v{color:#B3261E}
-  .tuile.tiede{border-color:var(--ocre);background:#FDF8F2}
-  .tuile.tiede .v{color:#9C5A10}
-  .banniere{margin-top:14px;padding:14px 16px;border-radius:10px;background:#B3261E;color:#fff;font-weight:600}
-  .banniere span{display:block;font-weight:400;font-size:13px;opacity:.92;margin-top:4px;line-height:1.45}
-  .badge{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:600;background:#EFEBE3;color:#4a4f4a;white-space:nowrap}
-  .badge.rouge{background:#F7DDDA;color:#8E1F19}
-  .badge.ocre{background:#F8E8D4;color:#8A4F0E}
-  .badge.vert{background:#DCEAE6;color:#0E4F45}
-  .journal{max-height:380px;overflow:auto;margin-top:6px}
-  .journal table{margin-top:0}
-  .journal th{position:sticky;top:0;background:#fff;z-index:1}
-  .quand{font-size:12px;color:#5b5f5b}
-  .vide{font-size:13px;color:#5b5f5b;margin-top:12px;line-height:1.5}
+  body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;
+       background:var(--fond);color:var(--encre);-webkit-font-smoothing:antialiased}
+
+  /* ---------- Barre de marque ---------- */
+  .barre{background:var(--nuit);color:#fff;padding:16px 20px;position:relative;overflow:hidden}
+  .barre::after{content:"";position:absolute;top:-140px;right:-130px;width:460px;height:460px;
+       border-radius:50%;pointer-events:none;
+       background:radial-gradient(circle, rgba(251,176,3,.26), rgba(251,176,3,.09) 46%, rgba(251,176,3,0) 72%)}
+  .marque{max-width:1040px;margin:0 auto;display:flex;align-items:center;gap:14px;position:relative}
+  .marque img{width:46px;height:46px;border-radius:11px;flex:none;box-shadow:0 2px 10px rgba(0,0,0,.25)}
+  .marque h1{margin:0;font-size:25px;font-weight:700;letter-spacing:.2px;line-height:1.1}
+  .marque p{margin:3px 0 0;font-size:13px;opacity:.78}
+  .drapeau{margin-left:auto;display:flex;gap:4px;flex:none}
+  .drapeau i{width:7px;height:24px;border-radius:2px;display:block}
+
+  /* Banniere de marque : cadrage sur le coeur visuel (sujet, telephone, pastilles).
+     Le logo et la signature restent dans la barre au-dessus, donc rien n'est perdu
+     quand le haut et le bas de l'image sortent du cadre. */
+  .hero{background:var(--nuit);line-height:0;position:relative}
+  .hero img{display:block;width:100%;height:clamp(190px,30vw,330px);
+            object-fit:cover;object-position:50% 58%}
+  .hero::after{content:"";position:absolute;inset:auto 0 0 0;height:64px;pointer-events:none;
+               background:linear-gradient(to bottom, rgba(1,57,43,0), rgba(1,57,43,.55))}
+
+  main{max-width:1040px;margin:-42px auto 32px;padding:0 20px;position:relative}
+
+  /* ---------- Cartes ---------- */
+  .carte{background:#fff;border:1px solid var(--bord);border-radius:16px;
+         padding:20px;margin-bottom:16px;box-shadow:var(--ombre)}
+  .tete{display:flex;align-items:center;gap:11px;margin-bottom:14px}
+  .tete h2{margin:0;font-size:17px;font-weight:650;letter-spacing:.1px}
+  .pastille{width:30px;height:30px;border-radius:9px;flex:none;display:grid;place-items:center;
+            background:linear-gradient(145deg,var(--or-clair),var(--or));color:var(--nuit)}
+  .pastille svg{width:17px;height:17px}
+  .pastille.verte{background:linear-gradient(145deg,var(--vert-vif),var(--vert-mi));color:#fff}
+  .pastille.rouge{background:linear-gradient(145deg,var(--rouge-clair),var(--rouge));color:#fff}
+
+  /* ---------- Formulaires ---------- */
+  label{display:block;font-size:13px;color:var(--gris);margin-bottom:6px;font-weight:500}
+  .champ{position:relative}
+  .champ > svg{position:absolute;left:13px;top:50%;transform:translateY(-50%);
+               width:17px;height:17px;color:var(--gris);pointer-events:none}
+  input,textarea{width:100%;padding:13px 14px;font-size:16px;font-family:inherit;
+                 border:1px solid var(--bord);border-radius:10px;background:#fff;color:var(--encre)}
+  .champ input{padding-left:40px}
+  input:focus,textarea:focus{outline:none;border-color:var(--vert-mi);
+                             box-shadow:0 0 0 3px rgba(14,153,81,.14)}
+  textarea{resize:vertical;min-height:84px}
+  .duo{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  @media(max-width:700px){.duo{grid-template-columns:1fr}}
+  .aide{font-size:12px;color:var(--gris);margin-top:6px;display:flex;align-items:center;gap:5px}
+  .aide svg{width:13px;height:13px;flex:none}
+
+  button{margin-top:14px;padding:12px 20px;font-size:15px;font-weight:600;font-family:inherit;
+         border:0;border-radius:10px;cursor:pointer;display:inline-flex;align-items:center;gap:8px;
+         background:linear-gradient(145deg,var(--or-clair),var(--or));color:var(--nuit)}
+  button svg{width:16px;height:16px}
+  button:hover{filter:brightness(1.05)}
+  button.vert{background:var(--vert);color:#fff}
+  button.rouge{background:var(--rouge);color:#fff}
+  button:disabled{opacity:.55;cursor:default;filter:none}
+  .ligne-champ{display:flex;gap:10px;align-items:flex-start}
+  .ligne-champ .champ{flex:1}
+  .ligne-champ button{margin-top:0;padding:13px 20px;flex:none}
+  @media(max-width:560px){.ligne-champ{flex-direction:column}.ligne-champ button{width:100%;justify-content:center}}
+
+  /* ---------- Etat du telephone ---------- */
+  .banniere{display:flex;align-items:center;gap:14px;padding:16px 18px;border-radius:12px;
+            background:linear-gradient(100deg,var(--rouge),var(--rouge-clair));color:#fff}
+  .banniere .ico{width:38px;height:38px;border-radius:10px;flex:none;display:grid;place-items:center;
+                 background:rgba(255,255,255,.2)}
+  .banniere .ico svg{width:21px;height:21px}
+  .banniere b{display:block;font-size:17px;letter-spacing:.4px}
+  .banniere span{display:block;font-size:13px;opacity:.93;margin-top:3px;line-height:1.45}
+  .banniere .pil{margin-left:auto;flex:none;background:rgba(255,255,255,.92);color:var(--rouge);
+                 font-size:12px;font-weight:650;padding:5px 11px;border-radius:999px;white-space:nowrap}
+  @media(max-width:620px){.banniere{flex-wrap:wrap}.banniere .pil{margin-left:0;order:3}}
+
+  .tuiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;margin-top:14px}
+  .tuile{display:flex;gap:11px;align-items:flex-start;border:1px solid var(--bord);
+         border-radius:12px;padding:13px 14px;background:#fff}
+  .tuile .chip{width:30px;height:30px;border-radius:9px;flex:none;display:grid;place-items:center;
+               background:#EEF4F1;color:var(--vert-mi)}
+  .tuile .chip svg{width:16px;height:16px}
+  .tuile .t{font-size:11.5px;color:var(--gris);font-weight:500;line-height:1.3}
+  .tuile .v{font-size:18px;font-weight:700;margin-top:3px;line-height:1.2;overflow-wrap:anywhere}
+  .tuile .v.long{font-size:16px;letter-spacing:-.1px}
+  .tuile .s{font-size:12px;color:var(--gris);margin-top:3px;line-height:1.35}
+  .tuile.alerte{border-color:#F3C9C7;background:#FDF4F3}
+  .tuile.alerte .v{color:var(--rouge)}
+  .tuile.alerte .chip{background:#FAE2E0;color:var(--rouge)}
+  .tuile.tiede{border-color:#F6DFB0;background:#FFFBF2}
+  .tuile.tiede .v{color:#9A6A05}
+  .tuile.tiede .chip{background:#FDEFD2;color:#9A6A05}
+
+  /* ---------- Tableaux ---------- */
+  table{width:100%;border-collapse:collapse;font-size:14px}
+  thead th{text-align:left;padding:10px 12px;background:var(--fond);color:var(--gris);
+           font-size:11.5px;font-weight:650;text-transform:uppercase;letter-spacing:.5px}
+  thead th:first-child{border-radius:8px 0 0 8px}
+  thead th:last-child{border-radius:0 8px 8px 0}
+  tbody td{padding:11px 12px;border-bottom:1px solid var(--bord);vertical-align:middle}
+  tbody tr:last-child td{border-bottom:0}
+  .quand{font-size:12px;color:var(--gris);margin-top:2px}
+  .badge{display:inline-block;padding:3px 10px;border-radius:999px;font-size:11.5px;
+         font-weight:650;background:#EFEDEA;color:#4a4f4a;white-space:nowrap}
+  .badge.rouge{background:#FAE2E0;color:#A81B16}
+  .badge.ocre{background:#FDEFD2;color:#8A5A05}
+  .badge.vert{background:#DEF1E7;color:#0A6B3C}
+  .badge.bleu{background:#E2ECF7;color:#1F5B96}
+  .defile{max-height:384px;overflow:auto;margin:0 -4px;padding:0 4px}
+  .defile thead th{position:sticky;top:0;z-index:1}
+
+  /* ---------- Carte Leaflet ---------- */
+  .zone-carte{position:relative;margin-top:14px}
+  #map{height:420px;border-radius:12px;border:1px solid var(--bord);z-index:0}
+  .legende{position:absolute;top:12px;right:12px;z-index:400;background:rgba(255,255,255,.96);
+           border:1px solid var(--bord);border-radius:11px;padding:11px 13px;
+           box-shadow:0 4px 14px rgba(1,57,43,.1);font-size:12px;min-width:146px}
+  .legende div{display:flex;align-items:center;gap:8px}
+  .legende div + div{margin-top:9px}
+  .legende svg{width:14px;height:14px;color:var(--vert-mi);flex:none}
+  .legende b{display:block;font-size:13px;font-weight:650;color:var(--encre)}
+  .legende i{font-style:normal;color:var(--gris);font-size:11.5px}
+  @media(max-width:620px){.legende{position:static;margin-bottom:10px;width:100%}}
+
+  /* ---------- Verdicts ---------- */
+  .verdict{margin-top:14px;padding:18px;border-radius:12px;text-align:center;color:#fff}
+  .verdict b{display:block;font-size:20px;margin-bottom:5px;letter-spacing:.3px}
+  .verdict.vole{background:linear-gradient(100deg,var(--rouge),var(--rouge-clair))}
+  .verdict.propre{background:linear-gradient(100deg,var(--vert),var(--vert-vif))}
+  .verdict.inconnu{background:linear-gradient(100deg,#B07A06,var(--or))}
+
+  /* ---------- Ruban de bas de page ---------- */
+  .ruban{display:flex;align-items:center;gap:14px;background:#F1F8F4;border-color:#CDE6D8}
+  .ruban .ico{width:38px;height:38px;border-radius:10px;flex:none;display:grid;place-items:center;
+              background:var(--vert);color:#fff}
+  .ruban .ico svg{width:20px;height:20px}
+  .ruban b{display:block;font-size:15px;font-weight:650}
+  .ruban span{display:block;font-size:13px;color:var(--gris);margin-top:2px;line-height:1.4}
+  @media(max-width:620px){.ruban{flex-wrap:wrap}}
+
+  .note{font-size:13px;color:var(--gris);margin-top:12px;line-height:1.55}
+  .vide{font-size:13px;color:var(--gris);margin-top:12px;line-height:1.55}
+  .pied{max-width:1040px;margin:0 auto;padding:4px 20px 28px;font-size:12px;color:var(--gris);text-align:center}
 </style>
 </head>
 <body>
-<header>
-  <h1>Console Titré</h1>
-  <p>Suivi d'un téléphone et vérification du registre</p>
+
+<!-- Jeu d'icones en ligne : aucune dependance externe, aucun chargement reseau. -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <symbol id="i-tel" viewBox="0 0 24 24"><rect x="6" y="2" width="12" height="20" rx="2.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M11 18.5h2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+  <symbol id="i-loupe" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M16 16l4.5 4.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+  <symbol id="i-jauge" viewBox="0 0 24 24"><path d="M4 19a8 8 0 1 1 16 0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M12 19l4-5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+  <symbol id="i-alerte" viewBox="0 0 24 24"><path d="M12 3.5 2.6 20h18.8L12 3.5Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M12 10v4.2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="17.2" r="1.15" fill="currentColor"/></symbol>
+  <symbol id="i-bouclier" viewBox="0 0 24 24"><path d="M12 2.6 4.5 5.8v5.5c0 4.6 3.1 8.6 7.5 10.1 4.4-1.5 7.5-5.5 7.5-10.1V5.8L12 2.6Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M8.6 12.1l2.3 2.3 4.4-4.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-epingle" viewBox="0 0 24 24"><path d="M12 21.5s7-6.1 7-11a7 7 0 1 0-14 0c0 4.9 7 11 7 11Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><circle cx="12" cy="10.2" r="2.6" fill="none" stroke="currentColor" stroke-width="2"/></symbol>
+  <symbol id="i-batterie" viewBox="0 0 24 24"><rect x="2.5" y="7" width="16" height="10" rx="2.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M21 10.5v3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+  <symbol id="i-sim" viewBox="0 0 24 24"><path d="M5.5 3.5h8L19 9v11.5H5.5V3.5Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><rect x="9" y="12" width="6.5" height="5" rx="1.2" fill="none" stroke="currentColor" stroke-width="2"/></symbol>
+  <symbol id="i-horloge" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.6" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 7.2V12l3.2 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-envoi" viewBox="0 0 24 24"><path d="M21 3 10.5 13.5M21 3l-6.8 18.5-3.7-8-8-3.7L21 3Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></symbol>
+  <symbol id="i-liste" viewBox="0 0 24 24"><path d="M8.5 6.5h12M8.5 12h12M8.5 17.5h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="4" cy="6.5" r="1.4" fill="currentColor"/><circle cx="4" cy="12" r="1.4" fill="currentColor"/><circle cx="4" cy="17.5" r="1.4" fill="currentColor"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 11v5.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="7.9" r="1.15" fill="currentColor"/></symbol>
+  <symbol id="i-cible" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.6" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="3" fill="currentColor"/></symbol>
+</defs></svg>
+
+<header class="barre">
+  <div class="marque">
+    <img src="logo.png" alt="">
+    <div>
+      <h1>Titré</h1>
+      <p>Ensemble contre le vol de téléphone</p>
+    </div>
+    <div class="drapeau" aria-hidden="true">
+      <i style="background:#0E9951"></i><i style="background:#D81C1D"></i><i style="background:#FBB003"></i>
+    </div>
+  </div>
 </header>
+
+<div class="hero">
+  <picture>
+    <source media="(max-width:760px)" srcset="banniere-mobile.jpg">
+    <img src="banniere.jpg" alt="" width="1600" height="900">
+  </picture>
+</div>
+
 <main>
 
+  <!-- ====================== Appareil suivi ====================== -->
   <div class="carte">
-    <h2>Suivre un téléphone</h2>
-    <label for="cle">Clé de l'appareil — 12 caractères, affichés dans les réglages de l'application. Ce n'est pas une commande SMS.</label>
-    <input id="cle" placeholder="Ex : K7M2PQR4TXYZ" autocomplete="off">
-    <button id="charger">Charger l'appareil</button>
+    <div class="tete"><span class="pastille"><svg><use href="#i-tel"/></svg></span>
+      <h2>Suivre un téléphone</h2></div>
+    <label for="cle">Clé de l'appareil, affichée dans les réglages de l'application</label>
+    <div class="ligne-champ">
+      <div class="champ">
+        <svg><use href="#i-tel"/></svg>
+        <input id="cle" placeholder="Ex : K7M2PQR4TXYZ" autocomplete="off" spellcheck="false">
+      </div>
+      <button id="charger"><svg><use href="#i-loupe"/></svg>Charger l'appareil</button>
+    </div>
+    <p class="aide"><svg><use href="#i-info"/></svg>12 caractères. Ce n'est pas une commande SMS, et ce n'est pas l'IMEI.</p>
   </div>
 
+  <!-- ====================== État ====================== -->
   <div class="carte" id="bloc-etat">
-    <h2>État du téléphone</h2>
+    <div class="tete"><span class="pastille verte"><svg><use href="#i-jauge"/></svg></span>
+      <h2>État du téléphone</h2></div>
     <div id="banniere"></div>
     <div class="tuiles" id="tuiles"></div>
     <p class="vide" id="etat-vide">Chargez un appareil pour voir son état.</p>
   </div>
 
+  <!-- ====================== Journal ====================== -->
   <div class="carte">
-    <h2>Journal des événements</h2>
+    <div class="tete"><span class="pastille"><svg><use href="#i-liste"/></svg></span>
+      <h2>Journal des événements</h2></div>
     <p class="note" style="margin-top:0">Tout ce que le téléphone a signalé de lui-même : changement
     de SIM, passage en mode vol, batterie, échecs d'envoi. Les 100 derniers événements, du plus
     récent au plus ancien.</p>
-    <div class="journal" id="journal"></div>
+    <div class="defile" id="journal"></div>
   </div>
 
+  <!-- ====================== Trace ====================== -->
   <div class="carte">
-    <h2>Trace des positions</h2>
-    <div id="map"></div>
+    <div class="tete"><span class="pastille"><svg><use href="#i-epingle"/></svg></span>
+      <h2>Trace des positions</h2></div>
+    <div class="zone-carte">
+      <div id="map"></div>
+      <div class="legende" id="legende" hidden>
+        <div><svg><use href="#i-cible"/></svg><span><b id="lg-prec">—</b><i>Précision moyenne</i></span></div>
+        <div><svg><use href="#i-horloge"/></svg><span><b id="lg-date">—</b><i>Dernière position</i></span></div>
+      </div>
+    </div>
     <div id="tableau"></div>
     <p class="note">Les points sont espacés : le téléphone n'envoie pas sa position en continu,
     pour économiser la batterie et le forfait. Les segments droits relient les relevés, ils ne
     représentent pas un trajet réel. Le cercle autour de chaque point est le rayon d'incertitude.</p>
   </div>
 
-
+  <!-- ====================== Déclarer un vol ====================== -->
   <div class="carte" id="bloc-decl">
-    <h2>Déclarer un vol</h2>
+    <div class="tete"><span class="pastille rouge"><svg><use href="#i-alerte"/></svg></span>
+      <h2>Déclarer un vol</h2></div>
     <p class="note" style="margin-top:0">À faire depuis n'importe quel appareil, sans accès au
     téléphone volé. L'IMEI est inscrit au registre : plus personne ne pourra l'acheter en confiance.
     Ne déclarez que si le vol est réel — une fausse déclaration est contestable et traçable.</p>
-    <label for="dimei">IMEI du téléphone volé</label>
-    <input id="dimei" placeholder="15 chiffres" inputmode="numeric" autocomplete="off">
-    <label for="dtel" style="margin-top:12px">Votre numéro de téléphone</label>
-    <input id="dtel" placeholder="+237..." autocomplete="off">
-    <label for="dlieu" style="margin-top:12px">Lieu du vol</label>
-    <input id="dlieu" placeholder="Quartier, ville" autocomplete="off">
-    <label for="dplainte" style="margin-top:12px">Numéro de plainte (si déjà déposée)</label>
-    <input id="dplainte" placeholder="Facultatif" autocomplete="off">
-    <button id="declarer" style="background:#B3261E">Déclarer ce téléphone volé</button>
+    <div class="duo" style="margin-top:16px">
+      <div>
+        <label for="dimei">IMEI du téléphone volé</label>
+        <div class="champ"><svg><use href="#i-tel"/></svg>
+          <input id="dimei" placeholder="15 chiffres" inputmode="numeric" autocomplete="off"></div>
+      </div>
+      <div>
+        <label for="dtel">Votre numéro de téléphone</label>
+        <div class="champ"><svg><use href="#i-envoi"/></svg>
+          <input id="dtel" placeholder="+237…" autocomplete="off"></div>
+      </div>
+      <div>
+        <label for="dlieu">Lieu du vol</label>
+        <div class="champ"><svg><use href="#i-epingle"/></svg>
+          <input id="dlieu" placeholder="Quartier, ville" autocomplete="off"></div>
+      </div>
+      <div>
+        <label for="dplainte">Numéro de plainte, si déjà déposée</label>
+        <div class="champ"><svg><use href="#i-bouclier"/></svg>
+          <input id="dplainte" placeholder="Facultatif" autocomplete="off"></div>
+      </div>
+    </div>
+    <button class="rouge" id="declarer"><svg><use href="#i-alerte"/></svg>Déclarer ce téléphone volé</button>
     <div id="retourdecl"></div>
   </div>
 
+  <!-- ====================== Vérifier un IMEI ====================== -->
   <div class="carte">
-    <h2>Vérifier un IMEI avant d'acheter</h2>
-    <label for="imei">Composez *#06# sur le téléphone à vérifier</label>
-    <input id="imei" placeholder="15 chiffres" inputmode="numeric" autocomplete="off">
-    <button class="sec" id="verifier">Vérifier</button>
+    <div class="tete"><span class="pastille verte"><svg><use href="#i-bouclier"/></svg></span>
+      <h2>Vérifier un IMEI avant d'acheter</h2></div>
+    <label for="imei">Composez <strong>*#06#</strong> sur le téléphone à vérifier</label>
+    <div class="ligne-champ">
+      <div class="champ">
+        <svg><use href="#i-tel"/></svg>
+        <input id="imei" placeholder="15 chiffres" inputmode="numeric" autocomplete="off">
+      </div>
+      <button class="vert" id="verifier"><svg><use href="#i-bouclier"/></svg>Vérifier</button>
+    </div>
     <div id="resultat"></div>
   </div>
 
+  <div class="carte ruban">
+    <span class="ico"><svg><use href="#i-bouclier"/></svg></span>
+    <div>
+      <b>Un téléphone volé ne vaut rien si personne ne l'achète</b>
+      <span>Vérifiez l'IMEI avant tout achat d'occasion, et déclarez les vols que vous subissez.
+      Le registre ne vaut que par ce que la communauté y met.</span>
+    </div>
+  </div>
+
 </main>
+
+<p class="pied">Console Titré — registre communautaire des téléphones déclarés volés.</p>
+
 <script src="leaflet.js"></script>
 <script>
 const URL_BASE = "https://uffpjvkjknemuwdiybhp.supabase.co";
@@ -133,7 +332,7 @@ const fondSat = L.tileLayer(
   { maxZoom: 19, attribution: "Imagerie &copy; Esri" });
 fondPlan.addTo(carte);
 L.control.layers({ "Plan": fondPlan, "Satellite": fondSat }, null,
-  { collapsed: false }).addTo(carte);
+  { collapsed: false, position: "bottomleft" }).addTo(carte);
 
 let couche = L.layerGroup().addTo(carte);
 
@@ -146,6 +345,23 @@ if (cleUrl) {
 }
 
 function fmt(d){ return new Date(d).toLocaleString("fr-FR"); }
+
+// Duree ecoulee en clair : "il y a 12 min" parle mieux qu'un horodatage brut.
+function ecoule(d){
+  const s = (Date.now() - new Date(d).getTime()) / 1000;
+  if (s < 90)     return "à l'instant";
+  if (s < 5400)   return "il y a " + Math.round(s / 60) + " min";
+  if (s < 172800) return "il y a " + Math.round(s / 3600) + " h";
+  return "il y a " + Math.round(s / 86400) + " j";
+}
+
+async function rpc(nom, corps){
+  const r = await fetch(`${URL_BASE}/rest/v1/rpc/${nom}`, {
+    method: "POST", headers: { ...entetes, "Content-Type": "application/json" },
+    body: JSON.stringify(corps) });
+  if (!r.ok) throw new Error(nom + " " + r.status);
+  return r.json();
+}
 
 // ===================== Journal d'evenements =====================
 
@@ -163,22 +379,13 @@ const LIBELLE = {
 const TON = {
   sim_change:"rouge", mode_vol:"rouge",
   envoi_sms_echec:"ocre", verrou:"ocre", alarme:"ocre",
-  dernier_contact:"vert", position:"vert"
+  dernier_contact:"vert", position:"bleu", info:"bleu"
 };
 const RAISONS = {
   credit_epuise:"crédit épuisé", no_credit:"crédit épuisé",
   pas_de_reseau:"pas de réseau", no_network:"pas de réseau",
   sim_absente:"pas de SIM"
 };
-
-// Duree ecoulee en clair : "il y a 12 min" parle mieux qu'un horodatage brut.
-function ecoule(d){
-  const s = (Date.now() - new Date(d).getTime()) / 1000;
-  if (s < 90)     return "à l'instant";
-  if (s < 5400)   return "il y a " + Math.round(s / 60) + " min";
-  if (s < 172800) return "il y a " + Math.round(s / 3600) + " h";
-  return "il y a " + Math.round(s / 86400) + " j";
-}
 
 function detailLisible(type, d){
   d = d || {};
@@ -214,17 +421,11 @@ function detailLisible(type, d){
   }
 }
 
-async function rpc(nom, corps){
-  const r = await fetch(`${URL_BASE}/rest/v1/rpc/${nom}`, {
-    method: "POST", headers: { ...entetes, "Content-Type": "application/json" },
-    body: JSON.stringify(corps) });
-  if (!r.ok) throw new Error(nom + " " + r.status);
-  return r.json();
-}
-
-function tuile(titre, valeur, sous, classe){
-  return `<div class="tuile ${classe || ""}"><div class="t">${titre}</div>`
-       + `<div class="v">${valeur}</div>${sous ? `<div class="s">${sous}</div>` : ""}</div>`;
+function tuile(icone, titre, valeur, sous, classe){
+  return `<div class="tuile ${classe || ""}">`
+       + `<span class="chip"><svg><use href="#${icone}"/></svg></span>`
+       + `<div><div class="t">${titre}</div><div class="v${String(valeur).length > 14 ? " long" : ""}">${valeur}</div>`
+       + `${sous ? `<div class="s">${sous}</div>` : ""}</div></div>`;
 }
 
 async function chargerEtat(cle){
@@ -248,9 +449,13 @@ async function chargerEtat(cle){
 
   // Le mode vol passe avant tout le reste : c'est l'information qui change la conduite a tenir.
   if (m.mode_vol){
-    zb.innerHTML = `<div class="banniere">MODE VOL ACTIF`
+    const d = detailLisible("mode_vol", m.mode_vol.detail);
+    zb.innerHTML = `<div class="banniere">`
+      + `<span class="ico"><svg><use href="#i-alerte"/></svg></span>`
+      + `<span><b>MODE VOL ACTIF</b>`
       + `<span>Déclenché ${ecoule(m.mode_vol.cree_le)}, le ${fmt(m.mode_vol.cree_le)}`
-      + `${detailLisible("mode_vol", m.mode_vol.detail) ? " — " + detailLisible("mode_vol", m.mode_vol.detail) : ""}.</span></div>`;
+      + `${d ? " — " + d : ""}.</span></span>`
+      + `<span class="pil">Téléphone signalé</span></div>`;
   }
 
   let h = "";
@@ -258,31 +463,31 @@ async function chargerEtat(cle){
   // Dernier contact = l'evenement le plus recent, quel qu'il soit.
   const recent = rows.reduce((a, b) => new Date(a.cree_le) > new Date(b.cree_le) ? a : b);
   const ageH = (Date.now() - new Date(recent.cree_le).getTime()) / 3600000;
-  h += tuile("Dernier contact", ecoule(recent.cree_le), fmt(recent.cree_le),
+  h += tuile("i-horloge", "Dernier contact", ecoule(recent.cree_le), fmt(recent.cree_le),
              ageH > 24 ? "alerte" : ageH > 2 ? "tiede" : "");
 
   if (m.batterie){
     const d = m.batterie.detail || {};
-    h += tuile("Batterie", d.niveau != null ? d.niveau + " %" : "—",
+    h += tuile("i-batterie", "Batterie", d.niveau != null ? d.niveau + " %" : "—",
                (d.en_charge ? "En charge · " : "") + ecoule(m.batterie.cree_le),
                d.niveau != null && d.niveau <= 15 ? "alerte"
              : d.niveau != null && d.niveau <= 35 ? "tiede" : "");
   }
   if (m.sim_change){
     const d = m.sim_change.detail || {};
-    h += tuile("SIM détectée", d.nouveau_numero || d.nouveau_operateur || "Changée",
+    h += tuile("i-sim", "SIM détectée", d.nouveau_numero || d.nouveau_operateur || "Changée",
                [d.nouveau_operateur, "changement " + ecoule(m.sim_change.cree_le)].filter(Boolean).join(" · "),
                "alerte");
   }
   if (m.position){
     const d = m.position.detail || {};
-    h += tuile("Dernière position",
+    h += tuile("i-epingle", "Dernière position",
                (d.lat != null && d.lon != null) ? d.lat.toFixed(4) + ", " + d.lon.toFixed(4) : "—",
                ecoule(m.position.cree_le) + (d.precision_m ? " · ± " + Math.round(d.precision_m) + " m" : ""));
   }
   if (m.envoi_sms_echec){
     const d = m.envoi_sms_echec.detail || {};
-    h += tuile("Dernier échec", RAISONS[d.raison] || d.raison || "Échec",
+    h += tuile("i-envoi", "Dernier échec", RAISONS[d.raison] || d.raison || "Échec",
                (d.commande ? d.commande + " · " : "") + ecoule(m.envoi_sms_echec.cree_le), "tiede");
   }
   zt.innerHTML = h;
@@ -297,15 +502,17 @@ async function chargerJournal(cle){
   if (!Array.isArray(evs) || evs.length === 0){
     z.innerHTML = "<p class='vide'>Aucun événement enregistré pour cette clé.</p>"; return;
   }
-  let t = "<table><tr><th>Quand</th><th>Événement</th><th>Détail</th></tr>";
+  let t = "<table><thead><tr><th>Quand</th><th>Événement</th><th>Détail</th></tr></thead><tbody>";
   evs.forEach(e => {
     t += `<tr><td style="white-space:nowrap">${fmt(e.cree_le)}`
-       + `<br><span class="quand">${ecoule(e.cree_le)}</span></td>`
+       + `<div class="quand">${ecoule(e.cree_le)}</div></td>`
        + `<td><span class="badge ${TON[e.type] || ""}">${LIBELLE[e.type] || e.type}</span></td>`
        + `<td>${detailLisible(e.type, e.detail)}</td></tr>`;
   });
-  z.innerHTML = t + "</table>";
+  z.innerHTML = t + "</tbody></table>";
 }
+
+// ===================== Trace des positions =====================
 
 document.getElementById("charger").onclick = async () => {
   // Tolerant : on accepte "TITRE XXXX", "titre xxxx OU", ou la cle seule.
@@ -321,73 +528,79 @@ document.getElementById("charger").onclick = async () => {
   const b = document.getElementById("charger");
   b.disabled = true; b.textContent = "Chargement…";
   try {
-    const r = await fetch(`${URL_BASE}/rest/v1/rpc/titre_lire_positions`, {
-      method: "POST", headers: { ...entetes, "Content-Type": "application/json" },
-      body: JSON.stringify({ p_cle: cle }) });
-    const pts = await r.json();
+    const pts = await rpc("titre_lire_positions", { p_cle: cle });
     couche.clearLayers();
+    document.getElementById("legende").hidden = true;
     if (!Array.isArray(pts) || pts.length === 0) {
       document.getElementById("tableau").innerHTML =
-        "<p class='note'>Aucune position pour cette clé. Soit le téléphone n'a jamais eu de connexion, soit la clé est inexacte. Les positions envoyées par SMS n'apparaissent pas ici.</p>";
+        "<p class='vide'>Aucune position pour cette clé. Soit le téléphone n'a jamais eu de connexion, soit la clé est inexacte. Les positions envoyées par SMS n'apparaissent pas ici.</p>";
       return;
     }
     const coords = pts.map(p => [p.lat, p.lon]);
-    L.polyline(coords, { color: "#0E4F45", weight: 2, dashArray: "6 6" }).addTo(couche);
+    L.polyline(coords, { color: "#024D36", weight: 2, dashArray: "6 6" }).addTo(couche);
     pts.forEach((p, i) => {
-      L.circle([p.lat, p.lon], { radius: p.precision_m || 50, color: "#C8761A", weight: 1, fillOpacity: .08 }).addTo(couche);
-      L.circleMarker([p.lat, p.lon], { radius: 7, color: '#0E4F45', fillColor: '#0E4F45', fillOpacity: .9, weight: 2 }).addTo(couche)
+      L.circle([p.lat, p.lon], { radius: p.precision_m || 50, color: "#FBB003", weight: 1, fillOpacity: .1 }).addTo(couche);
+      L.circleMarker([p.lat, p.lon], { radius: 7, color: '#024D36', fillColor: '#0E9951', fillOpacity: .95, weight: 2 }).addTo(couche)
         .bindPopup(`<b>Point ${i + 1}</b><br>${fmt(p.releve_le)}<br>Précision ${Math.round(p.precision_m || 0)} m<br>${p.motif || ""}`);
     });
     carte.fitBounds(L.latLngBounds(coords).pad(0.2), { maxZoom: 17 });
-    let t = "<table><tr><th>#</th><th>Date</th><th>Latitude</th><th>Longitude</th><th>Précision</th><th>Motif</th></tr>";
+
+    const moy = pts.reduce((s, p) => s + (p.precision_m || 0), 0) / pts.length;
+    const dern = pts.reduce((a, b) => new Date(a.releve_le) > new Date(b.releve_le) ? a : b);
+    document.getElementById("lg-prec").textContent = "± " + Math.round(moy) + " m";
+    document.getElementById("lg-date").textContent = ecoule(dern.releve_le);
+    document.getElementById("legende").hidden = false;
+
+    let t = "<table><thead><tr><th>#</th><th>Date</th><th>Latitude</th><th>Longitude</th><th>Précision</th><th>Motif</th></tr></thead><tbody>";
     pts.slice().reverse().forEach((p, i) => {
       t += `<tr><td>${pts.length - i}</td><td>${fmt(p.releve_le)}</td><td>${p.lat.toFixed(5)}</td><td>${p.lon.toFixed(5)}</td><td>${Math.round(p.precision_m || 0)} m</td><td>${p.motif || ""}</td></tr>`;
     });
-    document.getElementById("tableau").innerHTML = t + "</table>";
+    document.getElementById("tableau").innerHTML = t + "</tbody></table>";
   } catch (e) {
-    document.getElementById("tableau").innerHTML = "<p class='note'>Impossible de joindre le registre.</p>";
-  } finally { b.disabled = false; b.textContent = "Charger l'appareil"; }
+    document.getElementById("tableau").innerHTML = "<p class='vide'>Impossible de joindre le registre.</p>";
+  } finally {
+    b.disabled = false;
+    b.innerHTML = '<svg><use href="#i-loupe"/></svg>Charger l\'appareil';
+  }
 };
 
+// ===================== Declaration de vol =====================
 
 document.getElementById("declarer").onclick = async () => {
   const imei = document.getElementById("dimei").value.replace(/\D/g, "");
   const tel  = document.getElementById("dtel").value.trim();
   const zone = document.getElementById("retourdecl");
-  if (imei.length < 14 || !tel) { zone.innerHTML = "<p class='note'>IMEI et numéro sont obligatoires.</p>"; return; }
+  if (imei.length < 14 || !tel) { zone.innerHTML = "<p class='vide'>IMEI et numéro sont obligatoires.</p>"; return; }
   if (!confirm("Confirmer la déclaration de vol de l'IMEI " + imei + " ?")) return;
   const b = document.getElementById("declarer");
   b.disabled = true; b.textContent = "Envoi…";
   try {
-    await fetch(`${URL_BASE}/rest/v1/rpc/titre_enregistrer_appareil`, {
-      method: "POST", headers: { ...entetes, "Content-Type": "application/json" },
-      body: JSON.stringify({ p_imei: imei, p_proprietaire: "Declarant " + tel, p_telephone: tel })
-    });
-    const r = await fetch(`${URL_BASE}/rest/v1/rpc/titre_declarer_vol`, {
-      method: "POST", headers: { ...entetes, "Content-Type": "application/json" },
-      body: JSON.stringify({ p_imei: imei, p_declare_par: tel,
+    await rpc("titre_enregistrer_appareil",
+      { p_imei: imei, p_proprietaire: "Declarant " + tel, p_telephone: tel });
+    await rpc("titre_declarer_vol",
+      { p_imei: imei, p_declare_par: tel,
         p_lieu: document.getElementById("dlieu").value.trim(),
-        p_plainte: document.getElementById("dplainte").value.trim() })
-    });
-    zone.innerHTML = r.ok
-      ? "<div class='verdict propre'><b>DÉCLARÉ</b>L'IMEI est inscrit au registre. Déposez plainte et présentez le numéro de plainte à votre opérateur.</div>"
-      : "<p class='note'>Le registre a refusé la déclaration. Réessayez.</p>";
-  } catch (e) { zone.innerHTML = "<p class='note'>Impossible de joindre le registre.</p>"; }
-  finally { b.disabled = false; b.textContent = "Déclarer ce téléphone volé"; }
+        p_plainte: document.getElementById("dplainte").value.trim() });
+    zone.innerHTML = "<div class='verdict propre'><b>DÉCLARÉ</b>L'IMEI est inscrit au registre. Déposez plainte et présentez le numéro de plainte à votre opérateur.</div>";
+  } catch (e) {
+    zone.innerHTML = "<p class='vide'>Le registre a refusé la déclaration. Réessayez.</p>";
+  } finally {
+    b.disabled = false;
+    b.innerHTML = '<svg><use href="#i-alerte"/></svg>Déclarer ce téléphone volé';
+  }
 };
 
 if (cleUrl) window.addEventListener("load", () => document.getElementById("charger").click());
 
+// ===================== Verification d'IMEI =====================
+
 document.getElementById("verifier").onclick = async () => {
   const imei = document.getElementById("imei").value.replace(/\D/g, "");
   const zone = document.getElementById("resultat");
-  if (imei.length < 14) { zone.innerHTML = "<p class='note'>Un IMEI compte 15 chiffres.</p>"; return; }
-  zone.innerHTML = "<p class='note'>Vérification…</p>";
+  if (imei.length < 14) { zone.innerHTML = "<p class='vide'>Un IMEI compte 15 chiffres.</p>"; return; }
+  zone.innerHTML = "<p class='vide'>Vérification…</p>";
   try {
-    const r = await fetch(`${URL_BASE}/rest/v1/rpc/titre_verifier_imei`, {
-      method: "POST", headers: { ...entetes, "Content-Type": "application/json" },
-      body: JSON.stringify({ p_imei: imei }) });
-    const d = await r.json();
+    const d = await rpc("titre_verifier_imei", { p_imei: imei });
     if (!Array.isArray(d) || d.length === 0) {
       zone.innerHTML = "<div class='verdict inconnu'><b>INCONNU DU REGISTRE</b>Ce téléphone n'est pas enregistré. Cela ne prouve rien, ni dans un sens ni dans l'autre.</div>";
     } else if (d[0].statut === "vole") {
@@ -396,7 +609,7 @@ document.getElementById("verifier").onclick = async () => {
       zone.innerHTML = "<div class='verdict propre'><b>AUCUN VOL DÉCLARÉ</b>" +
         (d[0].certifie ? "Ce téléphone a un certificat de propriété actif. Demandez au vendeur de vous le transférer." : "Enregistré, et non déclaré volé.") + "</div>";
     }
-  } catch (e) { zone.innerHTML = "<p class='note'>Impossible de joindre le registre.</p>"; }
+  } catch (e) { zone.innerHTML = "<p class='vide'>Impossible de joindre le registre.</p>"; }
 };
 </script>
 </body>
