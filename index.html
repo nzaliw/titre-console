@@ -128,6 +128,18 @@
   .defile{max-height:384px;overflow:auto;margin:0 -4px;padding:0 4px}
   .defile thead th{position:sticky;top:0;z-index:1}
 
+  /* ---------- Barre d'outils de l'itineraire ---------- */
+  .barre-outils{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;margin-top:4px}
+  .filtres{display:inline-flex;background:var(--fond);border:1px solid var(--bord);border-radius:10px;padding:3px}
+  .pastdate{margin:0;padding:8px 14px;font-size:13.5px;font-weight:600;border:0;border-radius:8px;
+            background:transparent;color:var(--gris);cursor:pointer}
+  .pastdate.actif{background:var(--vert);color:#fff}
+  .lecture{margin:0;padding:9px 16px;font-size:13.5px;background:var(--vert-mi);color:#fff}
+  .lecture:disabled{opacity:.5}
+  .lecture-info{position:absolute;left:12px;bottom:12px;z-index:400;background:var(--nuit);color:#fff;
+                border-radius:10px;padding:9px 13px;font-size:13px;box-shadow:0 4px 14px rgba(0,0,0,.3);max-width:70%}
+  .lecture-info b{font-size:14px}
+
   /* ---------- Carte Leaflet ---------- */
   .zone-carte{position:relative;margin-top:14px}
   #map{height:420px;border-radius:12px;border:1px solid var(--bord);z-index:0}
@@ -179,6 +191,9 @@
   <symbol id="i-liste" viewBox="0 0 24 24"><path d="M8.5 6.5h12M8.5 12h12M8.5 17.5h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="4" cy="6.5" r="1.4" fill="currentColor"/><circle cx="4" cy="12" r="1.4" fill="currentColor"/><circle cx="4" cy="17.5" r="1.4" fill="currentColor"/></symbol>
   <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 11v5.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="7.9" r="1.15" fill="currentColor"/></symbol>
   <symbol id="i-cible" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.6" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="3" fill="currentColor"/></symbol>
+  <symbol id="i-lire" viewBox="0 0 24 24"><path d="M7 4.5 19 12 7 19.5V4.5Z" fill="currentColor"/></symbol>
+  <symbol id="i-pause" viewBox="0 0 24 24"><rect x="6.5" y="4.5" width="4" height="15" rx="1.2" fill="currentColor"/><rect x="13.5" y="4.5" width="4" height="15" rx="1.2" fill="currentColor"/></symbol>
+  <symbol id="i-depart" viewBox="0 0 24 24"><circle cx="12" cy="12" r="6.5" fill="none" stroke="currentColor" stroke-width="2.4"/><circle cx="12" cy="12" r="2.4" fill="currentColor"/></symbol>
 </defs></svg>
 
 <header class="barre">
@@ -240,18 +255,32 @@
   <!-- ====================== Trace ====================== -->
   <div class="carte">
     <div class="tete"><span class="pastille"><svg><use href="#i-epingle"/></svg></span>
-      <h2>Trace des positions</h2></div>
+      <h2>Itinéraire du téléphone</h2></div>
+
+    <div class="barre-outils" id="barre-trace" hidden>
+      <div class="filtres" id="filtres-periode">
+        <button class="pastdate actif" data-h="0">Tout</button>
+        <button class="pastdate" data-h="168">7 jours</button>
+        <button class="pastdate" data-h="48">48 h</button>
+        <button class="pastdate" data-h="24">24 h</button>
+      </div>
+      <button class="lecture" id="lecture"><svg><use href="#i-lire"/></svg>Rejouer le trajet</button>
+    </div>
+
     <div class="zone-carte">
       <div id="map"></div>
       <div class="legende" id="legende" hidden>
-        <div><svg><use href="#i-cible"/></svg><span><b id="lg-prec">—</b><i>Précision moyenne</i></span></div>
-        <div><svg><use href="#i-horloge"/></svg><span><b id="lg-date">—</b><i>Dernière position</i></span></div>
+        <div><svg><use href="#i-depart"/></svg><span><b id="lg-depart">—</b><i>Premier relevé</i></span></div>
+        <div><svg><use href="#i-epingle"/></svg><span><b id="lg-fin">—</b><i>Dernier relevé</i></span></div>
+        <div><svg><use href="#i-pause"/></svg><span><b id="lg-arrets">—</b><i>Arrêts détectés</i></span></div>
       </div>
+      <div class="lecture-info" id="lecture-info" hidden></div>
     </div>
     <div id="tableau"></div>
     <p class="note">Les points sont espacés : le téléphone n'envoie pas sa position en continu,
-    pour économiser la batterie et le forfait. Les segments droits relient les relevés, ils ne
-    représentent pas un trajet réel. Le cercle autour de chaque point est le rayon d'incertitude.</p>
+    pour économiser la batterie et le forfait. Les segments relient les relevés, ils n'épousent
+    pas les rues. Un <b>arrêt</b> est un endroit où le téléphone est resté un moment — c'est là
+    que mène souvent la piste. Le cercle autour d'un point est son rayon d'incertitude.</p>
   </div>
 
   <!-- ====================== Déclarer un vol ====================== -->
@@ -321,20 +350,31 @@ const URL_BASE = "https://uffpjvkjknemuwdiybhp.supabase.co";
 const CLE_API  = "sb_publishable_JQCh1villLWmB-uR1u2W5A_tAYLnjC_";
 const entetes  = { apikey: CLE_API, Authorization: "Bearer " + CLE_API };
 
-let carte = L.map("map").setView([4.95, 9.93], 12);
+let carte = L.map("map", { zoomControl: true }).setView([4.95, 9.93], 13);
 // Tuiles Esri : aucune cle d'API requise, contrairement a CARTO, et usage
 // applicatif autorise, contrairement aux serveurs benevoles d'OpenStreetMap.
-const fondPlan = L.tileLayer(
-  "https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}",
-  { maxZoom: 19, attribution: "Fonds de carte &copy; Esri" });
-const fondSat = L.tileLayer(
-  "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-  { maxZoom: 19, attribution: "Imagerie &copy; Esri" });
-fondPlan.addTo(carte);
-L.control.layers({ "Plan": fondPlan, "Satellite": fondSat }, null,
+const esri = (service) => L.tileLayer(
+  `https://server.arcgisonline.com/ArcGIS/rest/services/${service}/MapServer/tile/{z}/{y}/{x}`,
+  { maxZoom: 19, attribution: "&copy; Esri" });
+
+// Plan : le fond rue, qui porte deja les noms de quartiers et de voies.
+const fondPlan = esri("World_Street_Map");
+
+// Satellite hybride : l'imagerie seule n'a aucun repere. On superpose les
+// routes puis les noms de lieux, pour reconnaitre un quartier sur la photo.
+const fondSat = L.layerGroup([
+  esri("World_Imagery"),
+  esri("Reference/World_Transportation"),
+  esri("Reference/World_Boundaries_and_Places")
+]);
+
+fondSat.addTo(carte);   // le satellite repere parle plus a l'oeil que le plan
+L.control.layers({ "Satellite + repères": fondSat, "Plan": fondPlan }, null,
   { collapsed: false, position: "bottomleft" }).addTo(carte);
+L.control.scale({ imperial: false, position: "bottomright" }).addTo(carte);
 
 let couche = L.layerGroup().addTo(carte);
+let coucheArrets = L.layerGroup().addTo(carte);
 
 // Cle passee dans l'adresse : l'application ouvre la console sans rien a recopier.
 const cleUrl = new URLSearchParams(location.search).get("cle");
@@ -447,8 +487,12 @@ async function chargerEtat(cle){
 
   const m = {}; rows.forEach(r => { m[r.type] = r; });
 
-  // Le mode vol passe avant tout le reste : c'est l'information qui change la conduite a tenir.
-  if (m.mode_vol){
+  // Le mode vol est actif tant qu'aucun fin_vol plus recent ne l'a clos.
+  // Sans cet evenement de sortie, le bandeau restait affiche pour toujours.
+  const volActif = m.mode_vol &&
+    (!m.fin_vol || new Date(m.mode_vol.cree_le) > new Date(m.fin_vol.cree_le));
+
+  if (volActif){
     const d = detailLisible("mode_vol", m.mode_vol.detail);
     zb.innerHTML = `<div class="banniere">`
       + `<span class="ico"><svg><use href="#i-alerte"/></svg></span>`
@@ -465,6 +509,13 @@ async function chargerEtat(cle){
   const ageH = (Date.now() - new Date(recent.cree_le).getTime()) / 3600000;
   h += tuile("i-horloge", "Dernier contact", ecoule(recent.cree_le), fmt(recent.cree_le),
              ageH > 24 ? "alerte" : ageH > 2 ? "tiede" : "");
+
+  // Depuis combien de temps le telephone est en mode vol : une duree parle
+  // plus qu'une date quand on suit un vol en cours.
+  if (volActif){
+    h += tuile("i-alerte", "Mode vol depuis", dureeCourte(Date.now() - new Date(m.mode_vol.cree_le).getTime()),
+               "déclenché le " + fmt(m.mode_vol.cree_le), "alerte");
+  }
 
   if (m.batterie){
     const d = m.batterie.detail || {};
@@ -512,7 +563,182 @@ async function chargerJournal(cle){
   z.innerHTML = t + "</tbody></table>";
 }
 
-// ===================== Trace des positions =====================
+// ===================== Itineraire du telephone =====================
+
+let positionsTous = [];   // toutes les positions, triees du plus ancien au plus recent
+let fenetreH = 0;         // filtre de periode, 0 = tout l'historique
+let lectureEnCours = null;
+
+/** Duree en clair et courte : "3 j 4 h", "2 h 10", "35 min". */
+function dureeCourte(ms){
+  const min = Math.round(ms / 60000);
+  if (min < 60)    return min + " min";
+  const h = Math.floor(min / 60), r = min % 60;
+  if (h < 24)      return r ? `${h} h ${r.toString().padStart(2,"0")}` : `${h} h`;
+  const j = Math.floor(h / 24);
+  return `${j} j ${h % 24} h`;
+}
+
+/** Distance entre deux points en metres (formule de Haversine). */
+function metres(a, b){
+  const R = 6371000, d = Math.PI / 180;
+  const dLat = (b[0]-a[0])*d, dLon = (b[1]-a[1])*d;
+  const s = Math.sin(dLat/2)**2 +
+            Math.cos(a[0]*d)*Math.cos(b[0]*d)*Math.sin(dLon/2)**2;
+  return 2 * R * Math.asin(Math.sqrt(s));
+}
+
+/**
+ * Detection des arrets : une suite de relevés consecutifs tous proches
+ * (moins de 150 m du premier du groupe) et couvrant au moins 15 minutes
+ * est un arret. C'est la ou le telephone s'est pose — un domicile, un
+ * atelier, un point de revente.
+ */
+function detecterArrets(pts){
+  const RAYON = 150, DUREE_MIN = 15 * 60000;
+  const arrets = [];
+  let i = 0;
+  while (i < pts.length){
+    let j = i;
+    const base = [pts[i].lat, pts[i].lon];
+    while (j + 1 < pts.length &&
+           metres(base, [pts[j+1].lat, pts[j+1].lon]) < RAYON) j++;
+    if (j > i){
+      const t0 = new Date(pts[i].releve_le).getTime();
+      const t1 = new Date(pts[j].releve_le).getTime();
+      if (t1 - t0 >= DUREE_MIN){
+        const lot = pts.slice(i, j + 1);
+        arrets.push({
+          lat: lot.reduce((s,p)=>s+p.lat,0)/lot.length,
+          lon: lot.reduce((s,p)=>s+p.lon,0)/lot.length,
+          debut: t0, fin: t1, nb: lot.length
+        });
+      }
+    }
+    i = j + 1;
+  }
+  return arrets;
+}
+
+function pointsFiltres(){
+  if (!fenetreH) return positionsTous;
+  const seuil = Date.now() - fenetreH * 3600000;
+  return positionsTous.filter(p => new Date(p.releve_le).getTime() >= seuil);
+}
+
+function dessinerItineraire(){
+  arreterLecture();
+  couche.clearLayers();
+  coucheArrets.clearLayers();
+  const pts = pointsFiltres();
+  const leg = document.getElementById("legende");
+  const tab = document.getElementById("tableau");
+
+  if (pts.length === 0){
+    leg.hidden = true;
+    tab.innerHTML = "<p class='vide'>Aucune position sur cette période.</p>";
+    return;
+  }
+
+  const coords = pts.map(p => [p.lat, p.lon]);
+
+  // Trajet : trait plein entre les relevés, dans l'ordre chronologique.
+  if (coords.length > 1)
+    L.polyline(coords, { color: "#024D36", weight: 3, opacity: .85 }).addTo(couche);
+
+  // Cercles d'incertitude, discrets.
+  pts.forEach(p =>
+    L.circle([p.lat, p.lon], { radius: p.precision_m || 50,
+      color: "#FBB003", weight: 1, fillOpacity: .06 }).addTo(couche));
+
+  // Arrets : marqueurs oranges numerotes, avec la duree.
+  const arrets = detecterArrets(pts);
+  arrets.forEach((a, i) => {
+    L.marker([a.lat, a.lon], { icon: L.divIcon({
+      className: "", iconSize: [30,30], iconAnchor: [15,15],
+      html: `<div style="width:30px;height:30px;border-radius:50%;background:#FBB003;
+             border:3px solid #fff;box-shadow:0 1px 5px rgba(0,0,0,.4);color:#01392B;
+             font-weight:800;font-size:13px;display:grid;place-items:center">${i+1}</div>` })})
+      .bindPopup(`<b>Arrêt ${i+1}</b><br>${dureeCourte(a.fin - a.debut)} sur place`
+               + `<br>de ${fmt(a.debut)}<br>à ${fmt(a.fin)}`)
+      .addTo(coucheArrets);
+  });
+
+  // Chaque relevé : petit point. Depart et arrivee se distinguent.
+  pts.forEach((p, i) => {
+    const premier = i === 0, dernier = i === pts.length - 1;
+    L.circleMarker([p.lat, p.lon], {
+      radius: premier || dernier ? 8 : 5,
+      color: "#fff", weight: 2,
+      fillColor: dernier ? "#D81C1D" : premier ? "#0E9951" : "#024D36",
+      fillOpacity: 1
+    }).bindPopup(
+      `<b>${premier ? "Départ" : dernier ? "Dernière position" : "Point " + (i+1)}</b>`
+      + `<br>${fmt(p.releve_le)}<br>± ${Math.round(p.precision_m || 0)} m`
+      + `${p.motif ? "<br>" + p.motif : ""}`).addTo(couche);
+  });
+
+  carte.fitBounds(L.latLngBounds(coords).pad(0.25), { maxZoom: 17 });
+
+  document.getElementById("lg-depart").textContent = ecoule(pts[0].releve_le);
+  document.getElementById("lg-fin").textContent = ecoule(pts[pts.length-1].releve_le);
+  document.getElementById("lg-arrets").textContent =
+    arrets.length ? arrets.length + (arrets.length > 1 ? " lieux" : " lieu") : "aucun";
+  leg.hidden = false;
+  document.getElementById("lecture").disabled = pts.length < 2;
+
+  // Tableau : du plus recent au plus ancien.
+  let t = "<table><thead><tr><th>#</th><th>Date</th><th>Latitude</th><th>Longitude</th><th>Précision</th><th>Motif</th></tr></thead><tbody>";
+  pts.slice().reverse().forEach((p, i) => {
+    t += `<tr><td>${pts.length - i}</td><td>${fmt(p.releve_le)}</td><td>${p.lat.toFixed(5)}</td><td>${p.lon.toFixed(5)}</td><td>${Math.round(p.precision_m || 0)} m</td><td>${p.motif || ""}</td></tr>`;
+  });
+  tab.innerHTML = t + "</tbody></table>";
+}
+
+// ---- Rejeu du trajet ----
+function arreterLecture(){
+  if (lectureEnCours){ clearInterval(lectureEnCours.timer); lectureEnCours = null; }
+  const info = document.getElementById("lecture-info");
+  if (info){ info.hidden = true; }
+  const b = document.getElementById("lecture");
+  if (b){ b.innerHTML = '<svg><use href="#i-lire"/></svg>Rejouer le trajet'; }
+}
+
+function lireTrajet(){
+  const pts = pointsFiltres();
+  if (pts.length < 2) return;
+  arreterLecture();
+  const b = document.getElementById("lecture");
+  b.innerHTML = '<svg><use href="#i-pause"/></svg>Arrêter';
+  const info = document.getElementById("lecture-info");
+  const marqueur = L.circleMarker([pts[0].lat, pts[0].lon], {
+    radius: 10, color: "#fff", weight: 3, fillColor: "#D81C1D", fillOpacity: 1 }).addTo(couche);
+  let i = 0;
+  const avance = () => {
+    const p = pts[i];
+    marqueur.setLatLng([p.lat, p.lon]);
+    carte.panTo([p.lat, p.lon]);
+    info.hidden = false;
+    info.innerHTML = `<b>Point ${i+1} / ${pts.length}</b><br>${fmt(p.releve_le)}`;
+    i++;
+    if (i >= pts.length){ clearInterval(lectureEnCours.timer);
+      setTimeout(arreterLecture, 1500); }
+  };
+  avance();
+  lectureEnCours = { timer: setInterval(avance, 900), marqueur };
+}
+
+document.getElementById("lecture").onclick = () =>
+  lectureEnCours ? arreterLecture() : lireTrajet();
+
+document.querySelectorAll("#filtres-periode .pastdate").forEach(btn => {
+  btn.onclick = () => {
+    document.querySelectorAll("#filtres-periode .pastdate").forEach(b => b.classList.remove("actif"));
+    btn.classList.add("actif");
+    fenetreH = parseInt(btn.dataset.h, 10);
+    dessinerItineraire();
+  };
+});
 
 document.getElementById("charger").onclick = async () => {
   // Tolerant : on accepte "TITRE XXXX", "titre xxxx OU", ou la cle seule.
@@ -529,33 +755,20 @@ document.getElementById("charger").onclick = async () => {
   b.disabled = true; b.textContent = "Chargement…";
   try {
     const pts = await rpc("titre_lire_positions", { p_cle: cle });
-    couche.clearLayers();
-    document.getElementById("legende").hidden = true;
+    document.getElementById("barre-trace").hidden = false;
     if (!Array.isArray(pts) || pts.length === 0) {
+      positionsTous = [];
+      couche.clearLayers(); coucheArrets.clearLayers();
+      document.getElementById("legende").hidden = true;
+      document.getElementById("barre-trace").hidden = true;
       document.getElementById("tableau").innerHTML =
         "<p class='vide'>Aucune position pour cette clé. Soit le téléphone n'a jamais eu de connexion, soit la clé est inexacte. Les positions envoyées par SMS n'apparaissent pas ici.</p>";
       return;
     }
-    const coords = pts.map(p => [p.lat, p.lon]);
-    L.polyline(coords, { color: "#024D36", weight: 2, dashArray: "6 6" }).addTo(couche);
-    pts.forEach((p, i) => {
-      L.circle([p.lat, p.lon], { radius: p.precision_m || 50, color: "#FBB003", weight: 1, fillOpacity: .1 }).addTo(couche);
-      L.circleMarker([p.lat, p.lon], { radius: 7, color: '#024D36', fillColor: '#0E9951', fillOpacity: .95, weight: 2 }).addTo(couche)
-        .bindPopup(`<b>Point ${i + 1}</b><br>${fmt(p.releve_le)}<br>Précision ${Math.round(p.precision_m || 0)} m<br>${p.motif || ""}`);
-    });
-    carte.fitBounds(L.latLngBounds(coords).pad(0.2), { maxZoom: 17 });
-
-    const moy = pts.reduce((s, p) => s + (p.precision_m || 0), 0) / pts.length;
-    const dern = pts.reduce((a, b) => new Date(a.releve_le) > new Date(b.releve_le) ? a : b);
-    document.getElementById("lg-prec").textContent = "± " + Math.round(moy) + " m";
-    document.getElementById("lg-date").textContent = ecoule(dern.releve_le);
-    document.getElementById("legende").hidden = false;
-
-    let t = "<table><thead><tr><th>#</th><th>Date</th><th>Latitude</th><th>Longitude</th><th>Précision</th><th>Motif</th></tr></thead><tbody>";
-    pts.slice().reverse().forEach((p, i) => {
-      t += `<tr><td>${pts.length - i}</td><td>${fmt(p.releve_le)}</td><td>${p.lat.toFixed(5)}</td><td>${p.lon.toFixed(5)}</td><td>${Math.round(p.precision_m || 0)} m</td><td>${p.motif || ""}</td></tr>`;
-    });
-    document.getElementById("tableau").innerHTML = t + "</tbody></table>";
+    // On trie une fois pour toutes : du plus ancien au plus recent.
+    positionsTous = pts.slice().sort((a,b) =>
+      new Date(a.releve_le) - new Date(b.releve_le));
+    dessinerItineraire();
   } catch (e) {
     document.getElementById("tableau").innerHTML = "<p class='vide'>Impossible de joindre le registre.</p>";
   } finally {
