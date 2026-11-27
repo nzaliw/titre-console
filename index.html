@@ -28,6 +28,27 @@
   .verdict b{display:block;font-size:22px;margin-bottom:6px}
   .vole{background:#B3261E}.propre{background:var(--vert)}.inconnu{background:var(--ocre)}
   .note{font-size:13px;color:#5b5f5b;margin-top:10px;line-height:1.5}
+  /* --- Etat du telephone --- */
+  .tuiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-top:14px}
+  .tuile{border:1px solid var(--bord);border-radius:10px;padding:12px 14px;background:#fff}
+  .tuile .t{font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:#5b5f5b}
+  .tuile .v{font-size:19px;font-weight:600;margin-top:4px;line-height:1.25}
+  .tuile .s{font-size:12px;color:#5b5f5b;margin-top:3px}
+  .tuile.alerte{border-color:#B3261E;background:#FDF4F3}
+  .tuile.alerte .v{color:#B3261E}
+  .tuile.tiede{border-color:var(--ocre);background:#FDF8F2}
+  .tuile.tiede .v{color:#9C5A10}
+  .banniere{margin-top:14px;padding:14px 16px;border-radius:10px;background:#B3261E;color:#fff;font-weight:600}
+  .banniere span{display:block;font-weight:400;font-size:13px;opacity:.92;margin-top:4px;line-height:1.45}
+  .badge{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:600;background:#EFEBE3;color:#4a4f4a;white-space:nowrap}
+  .badge.rouge{background:#F7DDDA;color:#8E1F19}
+  .badge.ocre{background:#F8E8D4;color:#8A4F0E}
+  .badge.vert{background:#DCEAE6;color:#0E4F45}
+  .journal{max-height:380px;overflow:auto;margin-top:6px}
+  .journal table{margin-top:0}
+  .journal th{position:sticky;top:0;background:#fff;z-index:1}
+  .quand{font-size:12px;color:#5b5f5b}
+  .vide{font-size:13px;color:#5b5f5b;margin-top:12px;line-height:1.5}
 </style>
 </head>
 <body>
@@ -41,7 +62,26 @@
     <h2>Suivre un téléphone</h2>
     <label for="cle">Clé de l'appareil — 12 caractères, affichés dans les réglages de l'application. Ce n'est pas une commande SMS.</label>
     <input id="cle" placeholder="Ex : K7M2PQR4TXYZ" autocomplete="off">
-    <button id="charger">Afficher la trace</button>
+    <button id="charger">Charger l'appareil</button>
+  </div>
+
+  <div class="carte" id="bloc-etat">
+    <h2>État du téléphone</h2>
+    <div id="banniere"></div>
+    <div class="tuiles" id="tuiles"></div>
+    <p class="vide" id="etat-vide">Chargez un appareil pour voir son état.</p>
+  </div>
+
+  <div class="carte">
+    <h2>Journal des événements</h2>
+    <p class="note" style="margin-top:0">Tout ce que le téléphone a signalé de lui-même : changement
+    de SIM, passage en mode vol, batterie, échecs d'envoi. Les 100 derniers événements, du plus
+    récent au plus ancien.</p>
+    <div class="journal" id="journal"></div>
+  </div>
+
+  <div class="carte">
+    <h2>Trace des positions</h2>
     <div id="map"></div>
     <div id="tableau"></div>
     <p class="note">Les points sont espacés : le téléphone n'envoie pas sa position en continu,
@@ -107,6 +147,166 @@ if (cleUrl) {
 
 function fmt(d){ return new Date(d).toLocaleString("fr-FR"); }
 
+// ===================== Journal d'evenements =====================
+
+const LIBELLE = {
+  sim_change:      "Changement de SIM",
+  mode_vol:        "Passage en mode vol",
+  dernier_contact: "Contact",
+  batterie:        "Batterie",
+  envoi_sms_echec: "Échec d'envoi SMS",
+  position:        "Position relevée",
+  verrou:          "Verrouillage",
+  alarme:          "Alarme",
+  info:            "Demande d'infos"
+};
+const TON = {
+  sim_change:"rouge", mode_vol:"rouge",
+  envoi_sms_echec:"ocre", verrou:"ocre", alarme:"ocre",
+  dernier_contact:"vert", position:"vert"
+};
+const RAISONS = {
+  credit_epuise:"crédit épuisé", no_credit:"crédit épuisé",
+  pas_de_reseau:"pas de réseau", no_network:"pas de réseau",
+  sim_absente:"pas de SIM"
+};
+
+// Duree ecoulee en clair : "il y a 12 min" parle mieux qu'un horodatage brut.
+function ecoule(d){
+  const s = (Date.now() - new Date(d).getTime()) / 1000;
+  if (s < 90)     return "à l'instant";
+  if (s < 5400)   return "il y a " + Math.round(s / 60) + " min";
+  if (s < 172800) return "il y a " + Math.round(s / 3600) + " h";
+  return "il y a " + Math.round(s / 86400) + " j";
+}
+
+function detailLisible(type, d){
+  d = d || {};
+  switch (type){
+    case "sim_change":
+      return [d.nouveau_numero, d.nouveau_operateur].filter(Boolean).join(" · ")
+           + (d.ancien_operateur ? " (avant : " + d.ancien_operateur + ")" : "");
+    case "batterie":
+      return (d.niveau != null ? d.niveau + " %" : "") + (d.en_charge ? " · en charge" : "");
+    case "envoi_sms_echec":
+      return [d.commande, d.numero_cible, RAISONS[d.raison] || d.raison].filter(Boolean).join(" · ");
+    case "position":
+      return (d.lat != null && d.lon != null)
+        ? d.lat.toFixed(4) + ", " + d.lon.toFixed(4)
+          + (d.precision_m ? " ± " + Math.round(d.precision_m) + " m" : "")
+        : "";
+    case "mode_vol":
+      return d.declencheur === "sms_commande" ? "déclenché par SMS"
+           : d.declencheur === "sim_change"   ? "déclenché par changement de SIM"
+           : (d.declencheur || "");
+    case "alarme":
+      return d.duree_s ? d.duree_s + " s" : "";
+    case "dernier_contact":
+      return d.reseau === "data" ? "par données mobiles"
+           : d.reseau === "wifi" ? "par Wi-Fi"
+           : d.reseau === "sms"  ? "par SMS"
+           : (d.reseau || "");
+    default: {
+      const reste = Object.assign({}, d); delete reste.demo;
+      const k = Object.keys(reste);
+      return k.length ? k.map(x => x + " : " + reste[x]).join(" · ") : "";
+    }
+  }
+}
+
+async function rpc(nom, corps){
+  const r = await fetch(`${URL_BASE}/rest/v1/rpc/${nom}`, {
+    method: "POST", headers: { ...entetes, "Content-Type": "application/json" },
+    body: JSON.stringify(corps) });
+  if (!r.ok) throw new Error(nom + " " + r.status);
+  return r.json();
+}
+
+function tuile(titre, valeur, sous, classe){
+  return `<div class="tuile ${classe || ""}"><div class="t">${titre}</div>`
+       + `<div class="v">${valeur}</div>${sous ? `<div class="s">${sous}</div>` : ""}</div>`;
+}
+
+async function chargerEtat(cle){
+  const zt = document.getElementById("tuiles");
+  const zb = document.getElementById("banniere");
+  const zv = document.getElementById("etat-vide");
+  zb.innerHTML = ""; zt.innerHTML = ""; zv.style.display = "none";
+
+  let rows;
+  try { rows = await rpc("titre_lire_etat_appareil", { p_cle: cle }); }
+  catch (e){
+    zv.textContent = "Impossible de joindre le registre.";
+    zv.style.display = "block"; return;
+  }
+  if (!Array.isArray(rows) || rows.length === 0){
+    zv.textContent = "Aucun événement pour cette clé. Soit l'application n'a encore rien signalé, soit la clé est inexacte.";
+    zv.style.display = "block"; return;
+  }
+
+  const m = {}; rows.forEach(r => { m[r.type] = r; });
+
+  // Le mode vol passe avant tout le reste : c'est l'information qui change la conduite a tenir.
+  if (m.mode_vol){
+    zb.innerHTML = `<div class="banniere">MODE VOL ACTIF`
+      + `<span>Déclenché ${ecoule(m.mode_vol.cree_le)}, le ${fmt(m.mode_vol.cree_le)}`
+      + `${detailLisible("mode_vol", m.mode_vol.detail) ? " — " + detailLisible("mode_vol", m.mode_vol.detail) : ""}.</span></div>`;
+  }
+
+  let h = "";
+
+  // Dernier contact = l'evenement le plus recent, quel qu'il soit.
+  const recent = rows.reduce((a, b) => new Date(a.cree_le) > new Date(b.cree_le) ? a : b);
+  const ageH = (Date.now() - new Date(recent.cree_le).getTime()) / 3600000;
+  h += tuile("Dernier contact", ecoule(recent.cree_le), fmt(recent.cree_le),
+             ageH > 24 ? "alerte" : ageH > 2 ? "tiede" : "");
+
+  if (m.batterie){
+    const d = m.batterie.detail || {};
+    h += tuile("Batterie", d.niveau != null ? d.niveau + " %" : "—",
+               (d.en_charge ? "En charge · " : "") + ecoule(m.batterie.cree_le),
+               d.niveau != null && d.niveau <= 15 ? "alerte"
+             : d.niveau != null && d.niveau <= 35 ? "tiede" : "");
+  }
+  if (m.sim_change){
+    const d = m.sim_change.detail || {};
+    h += tuile("SIM détectée", d.nouveau_numero || d.nouveau_operateur || "Changée",
+               [d.nouveau_operateur, "changement " + ecoule(m.sim_change.cree_le)].filter(Boolean).join(" · "),
+               "alerte");
+  }
+  if (m.position){
+    const d = m.position.detail || {};
+    h += tuile("Dernière position",
+               (d.lat != null && d.lon != null) ? d.lat.toFixed(4) + ", " + d.lon.toFixed(4) : "—",
+               ecoule(m.position.cree_le) + (d.precision_m ? " · ± " + Math.round(d.precision_m) + " m" : ""));
+  }
+  if (m.envoi_sms_echec){
+    const d = m.envoi_sms_echec.detail || {};
+    h += tuile("Dernier échec", RAISONS[d.raison] || d.raison || "Échec",
+               (d.commande ? d.commande + " · " : "") + ecoule(m.envoi_sms_echec.cree_le), "tiede");
+  }
+  zt.innerHTML = h;
+}
+
+async function chargerJournal(cle){
+  const z = document.getElementById("journal");
+  z.innerHTML = "<p class='vide'>Chargement…</p>";
+  let evs;
+  try { evs = await rpc("titre_lire_evenements", { p_cle: cle, p_limite: 100 }); }
+  catch (e){ z.innerHTML = "<p class='vide'>Impossible de joindre le registre.</p>"; return; }
+  if (!Array.isArray(evs) || evs.length === 0){
+    z.innerHTML = "<p class='vide'>Aucun événement enregistré pour cette clé.</p>"; return;
+  }
+  let t = "<table><tr><th>Quand</th><th>Événement</th><th>Détail</th></tr>";
+  evs.forEach(e => {
+    t += `<tr><td style="white-space:nowrap">${fmt(e.cree_le)}`
+       + `<br><span class="quand">${ecoule(e.cree_le)}</span></td>`
+       + `<td><span class="badge ${TON[e.type] || ""}">${LIBELLE[e.type] || e.type}</span></td>`
+       + `<td>${detailLisible(e.type, e.detail)}</td></tr>`;
+  });
+  z.innerHTML = t + "</table>";
+}
+
 document.getElementById("charger").onclick = async () => {
   // Tolerant : on accepte "TITRE XXXX", "titre xxxx OU", ou la cle seule.
   let cle = document.getElementById("cle").value.trim().toUpperCase()
@@ -115,6 +315,9 @@ document.getElementById("charger").onclick = async () => {
   document.getElementById("cle").value = cle;
   if (!cle) return;
   try { localStorage.setItem("titre_cle", cle); } catch(e) {}
+  // Etat et journal partent en parallele de la trace : ils n'ont pas a l'attendre.
+  chargerEtat(cle);
+  chargerJournal(cle);
   const b = document.getElementById("charger");
   b.disabled = true; b.textContent = "Chargement…";
   try {
@@ -143,7 +346,7 @@ document.getElementById("charger").onclick = async () => {
     document.getElementById("tableau").innerHTML = t + "</table>";
   } catch (e) {
     document.getElementById("tableau").innerHTML = "<p class='note'>Impossible de joindre le registre.</p>";
-  } finally { b.disabled = false; b.textContent = "Afficher la trace"; }
+  } finally { b.disabled = false; b.textContent = "Charger l'appareil"; }
 };
 
 
