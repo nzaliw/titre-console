@@ -605,14 +605,21 @@ async function demander(type){
   document.querySelectorAll(".act").forEach(b => b.disabled = true);
   zone.hidden = false;
   zone.textContent = "Envoi de la commande…";
-  // Un raté reseau ponctuel ne doit pas bloquer : on reessaie jusqu'a 3 fois.
+  // On passe par la fonction serveur : elle depose la commande ET pousse la
+  // notification Firebase (reponse instantanee). Si le push echoue, la commande
+  // est quand meme deposee, donc la releve de secours la recupere.
   let ok = false;
   for (let essai = 1; essai <= 3 && !ok; essai++){
     try {
-      await rpc("titre_demander", { p_cle: cleActuelle, p_type: type });
-      ok = true;
+      const r = await fetch(`${URL_BASE}/functions/v1/titre-pousser`, {
+        method: "POST",
+        headers: { ...entetes, "Content-Type": "application/json" },
+        body: JSON.stringify({ cle: cleActuelle, type })
+      });
+      if (r.ok) ok = true;
+      else if (essai < 3) await new Promise(res => setTimeout(res, 1200));
     } catch (e){
-      if (essai < 3) await new Promise(r => setTimeout(r, 1200));
+      if (essai < 3) await new Promise(res => setTimeout(res, 1200));
     }
   }
   if (ok){
