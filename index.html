@@ -603,19 +603,26 @@ async function demander(type){
   if (!cleActuelle) return;
   const zone = document.getElementById("retour-cmd");
   document.querySelectorAll(".act").forEach(b => b.disabled = true);
-  try {
-    await rpc("titre_demander", { p_cle: cleActuelle, p_type: type });
-    zone.hidden = false;
+  zone.hidden = false;
+  zone.textContent = "Envoi de la commande…";
+  // Un raté reseau ponctuel ne doit pas bloquer : on reessaie jusqu'a 3 fois.
+  let ok = false;
+  for (let essai = 1; essai <= 3 && !ok; essai++){
+    try {
+      await rpc("titre_demander", { p_cle: cleActuelle, p_type: type });
+      ok = true;
+    } catch (e){
+      if (essai < 3) await new Promise(r => setTimeout(r, 1200));
+    }
+  }
+  if (ok){
     zone.textContent = `${NOM_CMD[type]}. Le téléphone y répondra à sa prochaine `
       + `connexion — tout de suite s'il est en ligne, sinon dans quelques minutes.`;
-    // Pour une demande de position, on guette l'arrivee du nouveau point.
     if (type === "localiser") guetterPosition();
-  } catch (e){
-    zone.hidden = false;
-    zone.textContent = "Impossible de déposer la commande. Réessayez.";
-  } finally {
-    setTimeout(() => document.querySelectorAll(".act").forEach(b => b.disabled = false), 4000);
+  } else {
+    zone.textContent = "Commande non déposée après plusieurs essais. Vérifiez la connexion et réessayez.";
   }
+  setTimeout(() => document.querySelectorAll(".act").forEach(b => b.disabled = false), 4000);
 }
 
 /** Apres une demande de position, on recharge la trace quelques fois pour voir
