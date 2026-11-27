@@ -83,11 +83,18 @@ const CLE_API  = "sb_publishable_JQCh1villLWmB-uR1u2W5A_tAYLnjC_";
 const entetes  = { apikey: CLE_API, Authorization: "Bearer " + CLE_API };
 
 let carte = L.map("map").setView([4.95, 9.93], 12);
-// Tuiles CARTO : utilisables par une application, contrairement aux serveurs
-// benevoles d'OpenStreetMap qui refusent ce type d'usage.
-L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",
-  { maxZoom: 20, subdomains: "abcd",
-    attribution: "© OpenStreetMap, © CARTO" }).addTo(carte);
+// Tuiles Esri : aucune cle d'API requise, contrairement a CARTO, et usage
+// applicatif autorise, contrairement aux serveurs benevoles d'OpenStreetMap.
+const fondPlan = L.tileLayer(
+  "https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}",
+  { maxZoom: 19, attribution: "Fonds de carte &copy; Esri" });
+const fondSat = L.tileLayer(
+  "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+  { maxZoom: 19, attribution: "Imagerie &copy; Esri" });
+fondPlan.addTo(carte);
+L.control.layers({ "Plan": fondPlan, "Satellite": fondSat }, null,
+  { collapsed: false }).addTo(carte);
+
 let couche = L.layerGroup().addTo(carte);
 
 // Cle passee dans l'adresse : l'application ouvre la console sans rien a recopier.
