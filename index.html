@@ -109,6 +109,8 @@
   .tuile.tiede{border-color:#F6DFB0;background:#FFFBF2}
   .tuile.tiede .v{color:#9A6A05}
   .tuile.tiede .chip{background:#FDEFD2;color:#9A6A05}
+  .tuile.perime{opacity:.62;border-style:dashed}
+  .tuile.perime .v{color:var(--gris)}
 
   /* ---------- Tableaux ---------- */
   table{width:100%;border-collapse:collapse;font-size:14px}
@@ -544,10 +546,16 @@ async function chargerEtat(cle){
 
   if (m.batterie){
     const d = m.batterie.detail || {};
-    h += tuile("i-batterie", "Batterie", d.niveau != null ? d.niveau + " %" : "—",
-               (d.en_charge ? "En charge · " : "") + ecoule(m.batterie.cree_le),
-               d.niveau != null && d.niveau <= 15 ? "alerte"
-             : d.niveau != null && d.niveau <= 35 ? "tiede" : "");
+    // La batterie n'est qu'un instantane : passe une certaine age, elle ne dit
+    // plus l'etat reel du telephone. On le signale au lieu de l'afficher comme frais.
+    const ageBatH = (Date.now() - new Date(m.batterie.cree_le).getTime()) / 3600000;
+    const perime  = ageBatH > 2;
+    const sousBat = (d.en_charge ? "En charge · " : "") + ecoule(m.batterie.cree_le)
+                  + (perime ? " · possiblement périmé" : "");
+    const classeBat = d.niveau != null && d.niveau <= 15 ? "alerte"
+                    : perime ? "perime"
+                    : d.niveau != null && d.niveau <= 35 ? "tiede" : "";
+    h += tuile("i-batterie", "Batterie", d.niveau != null ? d.niveau + " %" : "—", sousBat, classeBat);
   }
   if (m.sim_change){
     const d = m.sim_change.detail || {};
